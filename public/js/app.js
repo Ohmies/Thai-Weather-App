@@ -2,6 +2,9 @@ class WeatherApp {
   constructor() {
     this.currentLocation = null;
     this.provinces = [];
+    this.forecastData = null;
+    this.currentChart = null;
+    this.activeChartType = "temperature";
     this.init();
   }
 
@@ -26,32 +29,35 @@ class WeatherApp {
 
   populateProvinceSelect() {
     const select = document.getElementById("provinceSelect");
-    select.innerHTML = '<option value="">เลือกจังหวัด...</option>';
+    select.innerHTML = '<option value="">-- เลือกจังหวัด --</option>';
 
     this.provinces.forEach((province) => {
       const option = document.createElement("option");
       option.value = province.name;
       option.textContent = province.name;
-      option.dataset.lat = province.lat;
-      option.dataset.lon = province.lon;
       select.appendChild(option);
     });
   }
 
   setupEventListeners() {
-    // Search button
-    document.getElementById("searchBtn").addEventListener("click", () => {
-      this.searchWeather();
+    const searchBtn = document.getElementById("searchBtn");
+    const provinceSelect = document.getElementById("provinceSelect");
+
+    searchBtn.addEventListener("click", () => {
+      const selectedProvince = provinceSelect.value;
+      if (selectedProvince) {
+        this.getWeather(selectedProvince);
+      } else {
+        this.showError("กรุณาเลือกจังหวัด");
+      }
     });
 
-    // Province select change
-    document
-      .getElementById("provinceSelect")
-      .addEventListener("change", (e) => {
-        if (e.target.value) {
-          this.searchWeather();
-        }
-      });
+    provinceSelect.addEventListener("change", () => {
+      const selectedProvince = provinceSelect.value;
+      if (selectedProvince) {
+        this.getWeather(selectedProvince);
+      }
+    });
 
     // Refresh button
     document.getElementById("refreshBtn").addEventListener("click", () => {
@@ -63,14 +69,13 @@ class WeatherApp {
       this.getCurrentLocation();
     });
 
-    // Enter key support for search
-    document
-      .getElementById("provinceSelect")
-      .addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          this.searchWeather();
-        }
-      });
+    // Chart tab buttons
+    document.addEventListener("click", (e) => {
+      if (e.target.classList.contains("chart-tab-btn")) {
+        const chartType = e.target.dataset.chart;
+        this.switchChart(chartType);
+      }
+    });
   }
 
   async loadDefaultWeather() {
@@ -79,8 +84,7 @@ class WeatherApp {
   }
 
   async searchWeather() {
-    const select = document.getElementById("provinceSelect");
-    const selectedProvince = select.value;
+    const selectedProvince = document.getElementById("provinceSelect").value;
 
     if (!selectedProvince) {
       this.showError("กรุณาเลือกจังหวัด");
@@ -114,6 +118,8 @@ class WeatherApp {
 
       this.displayCurrentWeather(weatherData);
       this.displayForecast(forecastData);
+      this.forecastData = forecastData; // เก็บข้อมูล forecast สำหรับกราฟ
+      this.createChart(); // สร้างกราฟ
       this.currentLocation = city;
       this.updateLastUpdateTime();
       this.hideError();
@@ -149,6 +155,8 @@ class WeatherApp {
 
       this.displayCurrentWeather(weatherData);
       this.displayForecast(forecastData);
+      this.forecastData = forecastData; // เก็บข้อมูล forecast สำหรับกราฟ
+      this.createChart(); // สร้างกราฟ
       this.currentLocation = "ตำแหน่งปัจจุบัน";
       this.updateLastUpdateTime();
       this.hideError();
@@ -187,7 +195,6 @@ class WeatherApp {
     ).textContent = `${data.temperature}°C`;
     document.getElementById("weatherDescription").textContent =
       data.description;
-    document.getElementById("feelsLike").textContent = data.feelsLike;
 
     // Update weather details
     document.getElementById("visibility").textContent = data.visibility
@@ -241,6 +248,9 @@ class WeatherApp {
 
     // Show forecast section
     document.getElementById("forecastSection").classList.remove("hidden");
+
+    // Show chart section
+    document.getElementById("chartSection").classList.remove("hidden");
   }
 
   getWeatherIconClass(iconCode) {
@@ -251,8 +261,8 @@ class WeatherApp {
       "02n": "fas fa-cloud-moon", // few clouds night
       "03d": "fas fa-cloud", // scattered clouds
       "03n": "fas fa-cloud",
-      "04d": "fas fa-clouds", // broken clouds
-      "04n": "fas fa-clouds",
+      "04d": "fas fa-cloud", // broken clouds - แก้ไขจาก fas fa-clouds
+      "04n": "fas fa-cloud", // broken clouds - แก้ไขจาก fas fa-clouds
       "09d": "fas fa-cloud-rain", // shower rain
       "09n": "fas fa-cloud-rain",
       "10d": "fas fa-cloud-sun-rain", // rain day
@@ -265,7 +275,7 @@ class WeatherApp {
       "50n": "fas fa-smog",
     };
 
-    return iconMap[iconCode] || "fas fa-question";
+    return iconMap[iconCode] || "fas fa-question-circle";
   }
 
   async getCurrentLocation() {
@@ -330,6 +340,192 @@ class WeatherApp {
       year: "numeric",
     });
     document.getElementById("lastUpdate").textContent = now;
+  }
+
+  // ฟังก์ชันสำหรับสร้างกราฟ
+  createChart() {
+    if (!this.forecastData || !this.forecastData.forecasts) {
+      return;
+    }
+
+    const ctx = document.getElementById("weatherChart").getContext("2d");
+
+    // ทำลายกราฟเดิมถ้ามี
+    if (this.currentChart) {
+      this.currentChart.destroy();
+    }
+
+    // เตรียมข้อมูลสำหรับกราฟ
+    const labels = this.forecastData.forecasts.map((forecast) => {
+      const date = new Date();
+      const dayIndex = this.forecastData.forecasts.indexOf(forecast);
+      date.setDate(date.getDate() + dayIndex + 1);
+      return date.toLocaleDateString("th-TH", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+    });
+
+    const chartData = this.getChartData();
+
+    this.currentChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: chartData.datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: chartData.title,
+            color: "white",
+            font: {
+              size: 16,
+              family: "Sarabun",
+            },
+          },
+          legend: {
+            labels: {
+              color: "white",
+              font: {
+                family: "Sarabun",
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: "white",
+              font: {
+                family: "Sarabun",
+              },
+            },
+            grid: {
+              color: "rgba(255, 255, 255, 0.2)",
+            },
+          },
+          y: {
+            ticks: {
+              color: "white",
+              font: {
+                family: "Sarabun",
+              },
+            },
+            grid: {
+              color: "rgba(255, 255, 255, 0.2)",
+            },
+          },
+        },
+        elements: {
+          point: {
+            radius: 8,
+            hoverRadius: 12,
+            borderWidth: 3,
+            backgroundColor: "white",
+          },
+          line: {
+            tension: 0.4,
+            borderWidth: 4,
+          },
+        },
+      },
+    });
+  }
+
+  getChartData() {
+    const forecasts = this.forecastData.forecasts;
+
+    switch (this.activeChartType) {
+      case "temperature":
+        return {
+          title: "แนวโน้มอุณหภูมิ (°C)",
+          datasets: [
+            {
+              label: "อุณหภูมิ",
+              data: forecasts.map((f) => f.temperature.avg),
+              borderColor: "#ff6b35",
+              backgroundColor: "rgba(255, 107, 53, 0.2)",
+              pointBackgroundColor: "#ff6b35",
+              pointBorderColor: "white",
+              pointBorderWidth: 3,
+              fill: true,
+            },
+          ],
+        };
+
+      case "humidity":
+        return {
+          title: "แนวโน้มความชื้น (%)",
+          datasets: [
+            {
+              label: "ความชื้น",
+              data: forecasts.map((f) => f.humidity),
+              borderColor: "#00e5ff",
+              backgroundColor: "rgba(0, 229, 255, 0.2)",
+              pointBackgroundColor: "#00e5ff",
+              pointBorderColor: "white",
+              pointBorderWidth: 3,
+              fill: true,
+            },
+          ],
+        };
+
+      case "wind":
+        return {
+          title: "แนวโน้มความเร็วลม (ม./วินาที)",
+          datasets: [
+            {
+              label: "ความเร็วลม",
+              data: forecasts.map((f) => f.windSpeed),
+              borderColor: "#00ff88",
+              backgroundColor: "rgba(0, 255, 136, 0.2)",
+              pointBackgroundColor: "#00ff88",
+              pointBorderColor: "white",
+              pointBorderWidth: 3,
+              fill: true,
+            },
+          ],
+        };
+
+      case "pressure":
+        return {
+          title: "แนวโน้มความกดอากาศ (hPa)",
+          datasets: [
+            {
+              label: "ความกดอากาศ",
+              data: forecasts.map((f) => f.pressure || 1013),
+              borderColor: "#ff3d71",
+              backgroundColor: "rgba(255, 61, 113, 0.2)",
+              pointBackgroundColor: "#ff3d71",
+              pointBorderColor: "white",
+              pointBorderWidth: 3,
+              fill: true,
+            },
+          ],
+        };
+
+      default:
+        return this.getChartData("temperature");
+    }
+  }
+
+  switchChart(chartType) {
+    // อัปเดตปุ่ม active
+    document.querySelectorAll(".chart-tab-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    document
+      .querySelector(`[data-chart="${chartType}"]`)
+      .classList.add("active");
+
+    // อัปเดตประเภทกราฟและสร้างใหม่
+    this.activeChartType = chartType;
+    this.createChart();
   }
 }
 
