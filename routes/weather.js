@@ -649,8 +649,16 @@ async function getWeatherByCoordinates(lat, lon) {
     icon: data.weather[0].icon,
     main: data.weather[0].main,
     coordinates: { lat, lon },
-    sunrise: new Date(data.sys.sunrise * 1000).toLocaleTimeString("th-TH"),
-    sunset: new Date(data.sys.sunset * 1000).toLocaleTimeString("th-TH"),
+    sunrise: new Date(data.sys.sunrise * 1000).toLocaleTimeString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    sunset: new Date(data.sys.sunset * 1000).toLocaleTimeString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
     timestamp: new Date().toISOString(),
   };
 }
