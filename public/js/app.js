@@ -221,25 +221,56 @@ class WeatherApp {
       forecastCard.className = "forecast-card";
 
       forecastCard.innerHTML = `
-                <div class="text-white text-sm font-medium mb-2">${
-                  forecast.date
-                }</div>
-                <div class="weather-icon mb-3">
-                    <i class="${this.getWeatherIconClass(
-                      forecast.icon
-                    )} text-3xl text-yellow-300"></i>
+                <div class="mb-2">
+                    <div class="text-white text-sm font-medium mb-1">${
+                      forecast.date
+                    }</div>
+                    <div class="weather-icon mb-2">
+                        <i class="${this.getWeatherIconClass(
+                          forecast.icon
+                        )} text-3xl text-yellow-300"></i>
+                    </div>
                 </div>
-                <div class="text-white text-lg font-semibold mb-1">${
-                  forecast.temperature.max
-                }°</div>
-                <div class="text-white text-opacity-70 text-sm mb-2">${
-                  forecast.temperature.min
-                }°</div>
-                <div class="text-white text-opacity-80 text-xs">${
-                  forecast.description
-                }</div>
-                <div class="text-white text-opacity-60 text-xs mt-1">
-                    <i class="fas fa-droplet mr-1"></i>${forecast.humidity}%
+                
+                <div class="mb-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-white text-lg font-semibold">${
+                          forecast.temperature.max
+                        }°</span>
+                        <span class="text-white text-opacity-70 text-sm">${
+                          forecast.temperature.min
+                        }°</span>
+                    </div>
+                    <div class="text-white text-opacity-80 text-xs mb-2">${
+                      forecast.description
+                    }</div>
+                </div>
+                
+                <div class="space-y-1.5 mt-auto">
+                    <div class="bg-white bg-opacity-10 rounded px-2 py-1 flex items-center justify-between">
+                        <span class="text-white text-opacity-80 text-xs flex items-center">
+                            <i class="fas fa-droplet mr-1 text-blue-300"></i>ความชื้น
+                        </span>
+                        <span class="text-white text-xs font-medium">${
+                          forecast.humidity
+                        }%</span>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded px-2 py-1 flex items-center justify-between">
+                        <span class="text-white text-opacity-80 text-xs flex items-center">
+                            <i class="fas fa-wind mr-1 text-gray-300"></i>ลม
+                        </span>
+                        <span class="text-white text-xs font-medium">${
+                          forecast.windSpeed
+                        } m/s</span>
+                    </div>
+                    <div class="bg-white bg-opacity-10 rounded px-2 py-1 flex items-center justify-between">
+                        <span class="text-white text-opacity-80 text-xs flex items-center">
+                            <i class="fas fa-thermometer-half mr-1 text-orange-300"></i>เฉลี่ย
+                        </span>
+                        <span class="text-white text-xs font-medium">${
+                          forecast.temperature.avg
+                        }°</span>
+                    </div>
                 </div>
             `;
 
